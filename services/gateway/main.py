@@ -3,8 +3,10 @@
 """
 
 import os
+import sys
 import uuid
 import json
+import time
 from datetime import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -12,6 +14,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
+# 添加项目根目录到 path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from llm_client import get_llm_client
 
 # 数据模型
 class MessageContent(BaseModel):
@@ -127,9 +137,22 @@ async def chat_completions(request: ChatRequest):
         "timestamp": datetime.now().isoformat()
     })
 
-    # 调用 Agent（模拟，实际调用 Dify API）
+    # 调用 LLM
     intent = _classify_intent(request.message)
-    reply = _generate_reply(request.message, intent, session)
+    start_time = time.time()
+
+    try:
+        llm = get_llm_client()
+        system_prompt = _build_system_prompt(intent, session)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": request.message}
+        ]
+        reply = llm.chat(messages)
+        latency_ms = int((time.time() - start_time) * 1000)
+    except Exception as e:
+        reply = _generate_reply(request.message, intent, session)
+        latency_ms = int((time.time() - start_time) * 1000)
 
     # 记录助手回复
     session["messages"].append({
@@ -148,9 +171,8 @@ async def chat_completions(request: ChatRequest):
             "confidence": 0.9,
             "tool_calls": [],
             "metadata": {
-                "model": "mock",
-                "tokens_used": 150,
-                "latency_ms": 800
+                "model": os.getenv("LLM_MODEL", "mimo"),
+                "latency_ms": latency_ms
             }
         },
         trace_id=trace_id
@@ -162,22 +184,28 @@ async def chat_stream(request: ChatRequest):
     session_id = request.session_id or str(uuid.uuid4())
     intent = _classify_intent(request.message)
 
-    async def event_generator():
-        # 思考阶段
-        yield f"data: {json.dumps({'type': 'thinking', 'content': '正在分析您的问题...'})}\n\n"
+    try:
+        llm = get_llm_client()
+        system_prompt = _build_system_prompt(intent, {"messages": []})
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": request.message}
+        ]
 
-        # 意图识别结果
-        yield f"data: {json.dumps({'type': 'intent', 'content': intent})}\n\n"
+        async def event_generator():
+            yield f"data: {json.dumps({'type': 'thinking', 'content': '正在分析您的问题...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'intent', 'content': intent})}\n\n"
 
-        # 模拟回复生成
-        reply = _generate_reply(request.message, intent, {"messages": []})
-        words = reply.split(" ")
-        for i in range(0, len(words), 3):
-            chunk = " ".join(words[i:i+3])
-            yield f"data: {json.dumps({'type': 'reply', 'content': chunk})}\n\n"
+            for chunk in llm.chat_stream(messages):
+                yield f"data: {json.dumps({'type': 'reply', 'content': chunk})}\n\n"
 
-        # 完成
-        yield f"data: {json.dumps({'type': 'done', 'metadata': {'session_id': session_id}})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'metadata': {'session_id': session_id}})}\n\n"
+
+    except Exception as e:
+        async def event_generator():
+            reply = _generate_reply(request.message, intent, {"messages": []})
+            yield f"data: {json.dumps({'type': 'reply', 'content': reply})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'metadata': {'session_id': session_id}})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -261,7 +289,7 @@ def _classify_intent(message: str) -> str:
         return "other"
 
 def _generate_reply(message: str, intent: str, session: dict) -> str:
-    """生成回复（模拟，实际调用 LLM）"""
+    """生成回复（兜底，LLM 调用失败时使用）"""
     replies = {
         "order_query": "好的，请提供您的订单号，我帮您查询订单状态。",
         "logistics_query": "请提供您的快递单号或订单号，我帮您查询物流信息。",
@@ -272,6 +300,32 @@ def _generate_reply(message: str, intent: str, session: dict) -> str:
         "other": "这个问题我需要帮您确认一下，请稍等。您也可以尝试描述更具体的问题，或者转接人工客服。"
     }
     return replies.get(intent, "请问有什么可以帮您的？")
+
+def _build_system_prompt(intent: str, session: dict) -> str:
+    """构建 System Prompt"""
+    base = """你是一个专业的电商客服助手，名叫"小助手"。
+
+核心原则：
+1. 专业准确：基于已知信息回答，不编造
+2. 简洁高效：直接回答，避免废话
+3. 温暖友好：态度亲切但不过度热情
+4. 诚实守信：做不到的不承诺
+
+禁止事项：
+- 不要编造不存在的订单、物流、政策信息
+- 不要承诺做不到的退款金额或时间
+- 不要泄露公司内部信息"""
+
+    intent_prompts = {
+        "order_query": "\n\n当前场景：用户查询订单。请引导用户提供订单号，然后给出清晰的订单状态说明。",
+        "logistics_query": "\n\n当前场景：用户查询物流。请引导用户提供快递单号，说明当前位置和预计到达时间。",
+        "return_goods": "\n\n当前场景：用户要退换货。请引导用户提供订单号，说明退货流程和条件。",
+        "complaint": "\n\n当前场景：用户投诉。请先安抚情绪，再收集信息，提出解决方案。",
+        "human_transfer": "\n\n当前场景：用户要求转人工。请确认并告知正在转接。",
+        "greeting": "\n\n当前场景：用户打招呼。请简短友好地回复。",
+    }
+
+    return base + intent_prompts.get(intent, "\n\n请根据用户问题给出准确回答。")
 
 if __name__ == "__main__":
     import uvicorn

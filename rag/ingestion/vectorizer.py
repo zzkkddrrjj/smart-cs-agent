@@ -31,11 +31,15 @@ class OpenAIEmbedding(BaseEmbeddingProvider):
     def __init__(
         self,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
         model: str = "text-embedding-3-small",
         dimensions: int = 1536
     ):
         from openai import OpenAI
-        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self.client = OpenAI(
+            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            base_url=base_url
+        )
         self.model = model
         self.dimensions = dimensions
 
@@ -129,7 +133,7 @@ def create_vectorizer(
     工厂函数：创建向量化器实例
 
     Args:
-        provider: 提供者类型 ("openai", "anthropic", "local")
+        provider: 提供者类型 ("openai", "openai_compatible", "anthropic", "local")
         **kwargs: 提供者特定参数
 
     Returns:
@@ -137,6 +141,7 @@ def create_vectorizer(
     """
     providers = {
         "openai": OpenAIEmbedding,
+        "openai_compatible": OpenAIEmbedding,
         "anthropic": AnthropicEmbedding,
         "local": LocalEmbedding,
     }
