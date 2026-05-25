@@ -1,0 +1,341 @@
+# Dify 主工作流定义
+# 用途：智能客服 Agent 核心对话流程
+
+workflow:
+  name: "智能客服主工作流"
+  description: "处理用户咨询的完整流程，包括意图识别、RAG检索、工具调用、回复生成"
+  version: "1.0.0"
+
+  # 入口节点
+  start:
+    type: "start"
+    outputs:
+      - name: "user_message"
+        type: "string"
+        description: "用户输入的消息"
+      - name: "session_id"
+        type: "string"
+        description: "会话ID"
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+      - name: "context"
+        type: "object"
+        description: "上下文信息（渠道、用户信息等）"
+
+  # 节点定义
+  nodes:
+    # 1. 意图识别节点
+    - id: "intent_recognition"
+      type: "llm"
+      name: "意图识别"
+      description: "识别用户意图，路由到对应的处理流程"
+      model:
+        provider: "anthropic"
+        name: "claude-haiku-4-5-20251001"
+        temperature: 0.1
+        max_tokens: 500
+      prompt:
+        system: |
+          你是一个意图识别专家。根据用户消息，判断用户的主要意图。
+
+          可选意图分类：
+          - order_query: 查询订单状态、订单详情
+          - logistics_query: 查询物流、快递位置、配送时间
+          - return_goods: 退货、换货、退款
+          - complaint: 投诉、不满意、差评
+          - invoice: 发票相关
+          - human_transfer: 转人工、找客服
+          - greeting: 打招呼、问候
+          - chitchat: 闲聊、非业务问题
+          - other: 其他无法分类的问题
+
+          请只返回意图分类名称，不要返回其他内容。
+        user: "{{user_message}}"
+      outputs:
+        - name: "intent"
+          type: "string"
+          description: "识别出的意图"
+
+    # 2. 意图路由节点
+    - id: "intent_router"
+      type: "if-else"
+      name: "意图路由"
+      description: "根据意图分支处理"
+      conditions:
+        - if: "{{intent}} == 'order_query'"
+          then: "order_query_flow"
+        - if: "{{intent}} == 'logistics_query'"
+          then: "logistics_query_flow"
+        - if: "{{intent}} == 'return_goods'"
+          then: "return_goods_flow"
+        - if: "{{intent}} == 'complaint'"
+          then: "complaint_flow"
+        - if: "{{intent}} == 'human_transfer'"
+          then: "human_transfer_flow"
+        - if: "{{intent}} == 'greeting'"
+          then: "greeting_flow"
+        - else: "general_qa_flow"
+
+    # 3. 订单查询流程
+    - id: "order_query_flow"
+      type: "tool"
+      name: "订单查询"
+      description: "调用订单服务查询订单信息"
+      tool:
+        name: "query_order"
+        provider: "custom"
+        parameters:
+          order_id:
+            type: "string"
+            description: "订单号"
+            from: "llm_extract"
+          user_id:
+            type: "string"
+            description: "用户ID"
+            from: "input"
+      next: "generate_response"
+
+    # 4. 物流查询流程
+    - id: "logistics_query_flow"
+      type: "tool"
+      name: "物流查询"
+      description: "调用物流服务查询物流信息"
+      tool:
+        name: "track_logistics"
+        provider: "custom"
+        parameters:
+          tracking_number:
+            type: "string"
+            description: "快递单号"
+            from: "llm_extract"
+      next: "generate_response"
+
+    # 5. 退货流程
+    - id: "return_goods_flow"
+      type: "tool"
+      name: "退货处理"
+      description: "调用订单服务查询订单，判断退货资格"
+      tool:
+        name: "query_order"
+        provider: "custom"
+        parameters:
+          order_id:
+            type: "string"
+            from: "llm_extract"
+          user_id:
+            type: "string"
+            from: "input"
+      next: "generate_response"
+
+    # 6. 投诉处理流程
+    - id: "complaint_flow"
+      type: "tool"
+      name: "创建投诉工单"
+      description: "为投诉用户创建工单"
+      tool:
+        name: "create_ticket"
+        provider: "custom"
+        parameters:
+          user_id:
+            type: "string"
+            from: "input"
+          category:
+            type: "string"
+            value: "complaint"
+          description:
+            type: "string"
+            from: "llm_extract"
+          priority:
+            type: "string"
+            value: "high"
+      next: "generate_response"
+
+    # 7. 转人工流程
+    - id: "human_transfer_flow"
+      type: "tool"
+      name: "转人工"
+      description: "调用转人工接口"
+      tool:
+        name: "transfer_to_human"
+        provider: "custom"
+        parameters:
+          session_id:
+            type: "string"
+            from: "input"
+          reason:
+            type: "string"
+            value: "user_request"
+          context:
+            type: "object"
+            from: "context"
+      next: "end"
+
+    # 8. 问候流程
+    - id: "greeting_flow"
+      type: "llm"
+      name: "问候回复"
+      description: "生成问候回复"
+      model:
+        provider: "anthropic"
+        name: "claude-haiku-4-5-20251001"
+        temperature: 0.7
+        max_tokens: 200
+      prompt:
+        system: |
+          你是一个友好的客服助手。用户向你打招呼，请用温暖、专业的语气回复。
+          回复要简洁，1-2句话即可。
+        user: "{{user_message}}"
+      outputs:
+        - name: "response"
+          type: "string"
+
+    # 9. 通用问答流程（RAG）
+    - id: "general_qa_flow"
+      type: "knowledge-retrieval"
+      name: "知识库检索"
+      description: "从知识库检索相关信息"
+      knowledge_base:
+        id: "knowledge_base"
+        top_k: 5
+        score_threshold: 0.7
+      query: "{{user_message}}"
+      next: "generate_response"
+
+    # 10. 回复生成节点
+    - id: "generate_response"
+      type: "llm"
+      name: "回复生成"
+      description: "基于上下文和检索结果生成回复"
+      model:
+        provider: "anthropic"
+        name: "claude-sonnet-4-6"
+        temperature: 0.7
+        max_tokens: 1000
+      prompt:
+        system: |
+          你是一个专业的电商客服助手，名叫"小助手"。
+
+          ## 核心原则
+          1. 专业准确：基于知识库和系统数据回答，不编造信息
+          2. 简洁高效：直接回答问题，避免冗余废话
+          3. 温暖友好：态度亲切，但不过度热情
+          4. 诚实守信：做不到的事情不承诺
+
+          ## 禁止事项
+          - 不要编造不存在的订单、物流、政策信息
+          - 不要承诺做不到的退款金额或时间
+          - 不要泄露公司内部信息
+          - 不要推荐竞品或引导用户去其他平台
+
+          ## 上下文信息
+          用户ID: {{user_id}}
+          会话ID: {{session_id}}
+          渠道: {{context.channel}}
+
+          ## 工具调用结果
+          {{tool_results}}
+
+          ## 知识库参考
+          {{knowledge_context}}
+        user: "{{user_message}}"
+      outputs:
+        - name: "response"
+          type: "string"
+
+    # 11. 安全检查节点
+    - id: "safety_check"
+      type: "llm"
+      name: "安全检查"
+      description: "检查回复是否安全"
+      model:
+        provider: "anthropic"
+        name: "claude-haiku-4-5-20251001"
+        temperature: 0.1
+        max_tokens: 500
+      prompt:
+        system: |
+          检查以下回复是否安全。检查规则：
+          1. 是否包含内部信息泄露（成本、利润、内部系统名称）
+          2. 是否做出不可能的承诺（超出政策的金额或时间）
+          3. 是否包含有害内容
+
+          如果安全，返回 "safe"。
+          如果不安全，返回 "unsafe:原因"。
+        user: "{{response}}"
+      outputs:
+        - name: "safety_result"
+          type: "string"
+
+    # 12. 安全路由节点
+    - id: "safety_router"
+      type: "if-else"
+      name: "安全路由"
+      conditions:
+        - if: "{{safety_result}} == 'safe'"
+          then: "output"
+        - else: "fallback_response"
+
+    # 13. 兜底回复
+    - id: "fallback_response"
+      type: "template"
+      name: "兜底回复"
+      template: "非常抱歉，这个问题我需要核实一下信息。为了确保准确，我帮您转接人工客服处理，请稍等。"
+      next: "human_transfer_flow"
+
+    # 14. 输出节点
+    - id: "output"
+      type: "end"
+      name: "输出"
+      outputs:
+        - name: "reply"
+          type: "string"
+          from: "response"
+        - name: "intent"
+          type: "string"
+          from: "intent"
+        - name: "tool_calls"
+          type: "array"
+          from: "tool_calls"
+        - name: "metadata"
+          type: "object"
+
+  # 连接定义
+  edges:
+    - from: "start"
+      to: "intent_recognition"
+    - from: "intent_recognition"
+      to: "intent_router"
+    - from: "intent_router"
+      to:
+        - "order_query_flow"
+        - "logistics_query_flow"
+        - "return_goods_flow"
+        - "complaint_flow"
+        - "human_transfer_flow"
+        - "greeting_flow"
+        - "general_qa_flow"
+    - from: "order_query_flow"
+      to: "generate_response"
+    - from: "logistics_query_flow"
+      to: "generate_response"
+    - from: "return_goods_flow"
+      to: "generate_response"
+    - from: "complaint_flow"
+      to: "generate_response"
+    - from: "greeting_flow"
+      to: "output"
+    - from: "general_qa_flow"
+      to: "generate_response"
+    - from: "generate_response"
+      to: "safety_check"
+    - from: "safety_check"
+      to: "safety_router"
+    - from: "safety_router"
+      to:
+        - "output"
+        - "fallback_response"
+    - from: "fallback_response"
+      to: "human_transfer_flow"
+    - from: "human_transfer_flow"
+      to: "output"

@@ -1,0 +1,177 @@
+# Dify 工具定义 - 订单相关
+
+tools:
+  # 查询订单
+  - name: "query_order"
+    description: "查询订单详情，包括状态、金额、商品信息"
+    provider: "custom"
+    endpoint: "http://order-service:8001/api/v1/orders/{order_id}"
+    method: "GET"
+    parameters:
+      - name: "order_id"
+        type: "string"
+        description: "订单号，格式如 ORD-001"
+        required: true
+        location: "path"
+      - name: "user_id"
+        type: "string"
+        description: "用户ID，用于权限校验"
+        required: false
+        location: "query"
+    response:
+      type: "object"
+      properties:
+        order_id:
+          type: "string"
+          description: "订单号"
+        status:
+          type: "string"
+          description: "订单状态（pending/paid/shipped/delivered/cancelled）"
+        items:
+          type: "array"
+          description: "商品列表"
+        total_amount:
+          type: "number"
+          description: "订单总金额"
+        created_at:
+          type: "string"
+          description: "下单时间"
+    error_codes:
+      - code: 20001
+        message: "订单不存在"
+      - code: 20002
+        message: "无权访问此订单"
+
+  # 取消订单
+  - name: "cancel_order"
+    description: "取消订单，仅限未发货状态"
+    provider: "custom"
+    endpoint: "http://order-service:8001/api/v1/orders/{order_id}/cancel"
+    method: "POST"
+    parameters:
+      - name: "order_id"
+        type: "string"
+        description: "订单号"
+        required: true
+        location: "path"
+      - name: "reason"
+        type: "string"
+        description: "取消原因"
+        required: true
+        location: "body"
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+        required: true
+        location: "body"
+    response:
+      type: "object"
+      properties:
+        order_id:
+          type: "string"
+        status:
+          type: "string"
+        refund_amount:
+          type: "number"
+          description: "退款金额"
+        refund_eta:
+          type: "string"
+          description: "退款预计到账时间"
+    error_codes:
+      - code: 20001
+        message: "订单不存在"
+      - code: 20002
+        message: "订单状态不允许取消"
+
+  # 申请退款
+  - name: "apply_refund"
+    description: "申请退款，支持全额和部分退款"
+    provider: "custom"
+    endpoint: "http://order-service:8001/api/v1/orders/{order_id}/refund"
+    method: "POST"
+    parameters:
+      - name: "order_id"
+        type: "string"
+        description: "订单号"
+        required: true
+        location: "path"
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+        required: true
+        location: "body"
+      - name: "reason"
+        type: "string"
+        description: "退款原因"
+        required: true
+        location: "body"
+      - name: "refund_type"
+        type: "string"
+        description: "退款类型（full/partial）"
+        required: false
+        location: "body"
+        default: "full"
+      - name: "description"
+        type: "string"
+        description: "详细描述"
+        required: false
+        location: "body"
+      - name: "images"
+        type: "array"
+        description: "问题图片URL列表"
+        required: false
+        location: "body"
+    response:
+      type: "object"
+      properties:
+        refund_id:
+          type: "string"
+          description: "退款单号"
+        status:
+          type: "string"
+          description: "退款状态"
+        estimated_time:
+          type: "string"
+          description: "预计处理时间"
+    error_codes:
+      - code: 20001
+        message: "订单不存在"
+      - code: 20002
+        message: "订单状态不允许退款"
+
+  # 查询用户订单列表
+  - name: "list_user_orders"
+    description: "查询用户的订单列表"
+    provider: "custom"
+    endpoint: "http://order-service:8001/api/v1/orders"
+    method: "GET"
+    parameters:
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+        required: true
+        location: "query"
+      - name: "status"
+        type: "string"
+        description: "订单状态过滤"
+        required: false
+        location: "query"
+      - name: "page"
+        type: "integer"
+        description: "页码"
+        required: false
+        location: "query"
+        default: 1
+      - name: "page_size"
+        type: "integer"
+        description: "每页数量"
+        required: false
+        location: "query"
+        default: 10
+    response:
+      type: "object"
+      properties:
+        total:
+          type: "integer"
+        orders:
+          type: "array"

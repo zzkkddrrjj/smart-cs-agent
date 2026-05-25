@@ -1,0 +1,527 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created_at": "2024-01-01",
+    "total_cases": 50,
+    "categories": ["order", "logistics", "return", "complaint", "general", "human_transfer"]
+  },
+  "test_cases": [
+    {
+      "id": "TC001",
+      "category": "order",
+      "intent": "order_query",
+      "input": "帮我查一下订单 ORD-001 的状态",
+      "expected_output_contains": ["已发货", "顺丰"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC002",
+      "category": "order",
+      "intent": "order_query",
+      "input": "我的订单到哪了？订单号是 ORD-002",
+      "expected_output_contains": ["已签收"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC003",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "快递 SF1234567890 到哪了？",
+      "expected_output_contains": ["北京转运中心", "在途中"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": ["track_logistics"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC004",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "我的快递什么时候能到？",
+      "expected_output_contains": ["快递单号"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "用户未提供快递单号，应该追问"
+    },
+    {
+      "id": "TC005",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "我要退货",
+      "expected_output_contains": ["订单号"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "用户未提供订单号，应该追问"
+    },
+    {
+      "id": "TC006",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "订单 ORD-001 我想退货，不想要了",
+      "expected_output_contains": ["退货", "流程"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC007",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "退款多久能到账？",
+      "expected_output_contains": ["3-5个工作日"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": [],
+      "difficulty": "easy",
+      "notes": "知识库问答"
+    },
+    {
+      "id": "TC008",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "你们的东西质量太差了！我要投诉！",
+      "expected_output_contains": ["抱歉", "工单"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["create_ticket"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC009",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "我已经等了一个星期了，快递还没到，太不靠谱了！",
+      "expected_output_contains": ["抱歉", "催件"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["urge_delivery"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC010",
+      "category": "human_transfer",
+      "intent": "human_transfer",
+      "input": "转人工",
+      "expected_output_contains": ["转接", "人工客服"],
+      "expected_intent": "human_transfer",
+      "expected_tool_calls": ["transfer_to_human"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC011",
+      "category": "human_transfer",
+      "intent": "human_transfer",
+      "input": "我要找你们经理！",
+      "expected_output_contains": ["转接", "人工"],
+      "expected_intent": "human_transfer",
+      "expected_tool_calls": ["transfer_to_human"],
+      "difficulty": "medium",
+      "notes": "情绪激动，应该触发转人工"
+    },
+    {
+      "id": "TC012",
+      "category": "general",
+      "intent": "greeting",
+      "input": "你好",
+      "expected_output_contains": ["你好", "帮助"],
+      "expected_intent": "greeting",
+      "expected_tool_calls": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC013",
+      "category": "general",
+      "intent": "chitchat",
+      "input": "今天天气怎么样？",
+      "expected_output_contains": ["客服", "业务"],
+      "expected_intent": "chitchat",
+      "expected_tool_calls": [],
+      "difficulty": "easy",
+      "notes": "非业务问题，应该礼貌引导回业务"
+    },
+    {
+      "id": "TC014",
+      "category": "general",
+      "intent": "other",
+      "input": "你们公司在哪里？",
+      "expected_output_contains": ["客服"],
+      "expected_intent": "other",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "不在知识库中的问题"
+    },
+    {
+      "id": "TC015",
+      "category": "order",
+      "intent": "order_query",
+      "input": "我想看看我最近的订单",
+      "expected_output_contains": ["订单"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": ["list_user_orders"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC016",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "商品有质量问题，我要退款",
+      "expected_output_contains": ["退款", "照片"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC017",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "订单 ORD-002 已经签收了还能退吗？",
+      "expected_output_contains": ["7天", "退货"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC018",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "快递显示已签收，但我没收到",
+      "expected_output_contains": ["核实", "签收人"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": ["track_logistics"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "TC019",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "我要给差评！服务态度太差了！",
+      "expected_output_contains": ["抱歉", "重视"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["create_ticket"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC020",
+      "category": "general",
+      "intent": "greeting",
+      "input": "在吗？",
+      "expected_output_contains": ["在", "帮助"],
+      "expected_intent": "greeting",
+      "expected_tool_calls": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC021",
+      "category": "order",
+      "intent": "order_query",
+      "input": "我的订单付款成功了吗？",
+      "expected_output_contains": ["订单号"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "用户未提供订单号，应该追问"
+    },
+    {
+      "id": "TC022",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "退货地址是什么？",
+      "expected_output_contains": ["地址", "寄回"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": [],
+      "difficulty": "easy",
+      "notes": "知识库问答"
+    },
+    {
+      "id": "TC023",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "能催一下快递吗？",
+      "expected_output_contains": ["订单号", "催件"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "用户未提供订单号，应该追问"
+    },
+    {
+      "id": "TC024",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "发错货了！我买的是红色，收到的是蓝色",
+      "expected_output_contains": ["抱歉", "换货"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["query_order", "create_ticket"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "TC025",
+      "category": "human_transfer",
+      "intent": "human_transfer",
+      "input": "这个问题你解决不了，找你们领导来",
+      "expected_output_contains": ["转接", "人工"],
+      "expected_intent": "human_transfer",
+      "expected_tool_calls": ["transfer_to_human"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC026",
+      "category": "general",
+      "intent": "invoice",
+      "input": "怎么开发票？",
+      "expected_output_contains": ["发票", "订单详情"],
+      "expected_intent": "invoice",
+      "expected_tool_calls": [],
+      "difficulty": "easy",
+      "notes": "知识库问答"
+    },
+    {
+      "id": "TC027",
+      "category": "order",
+      "intent": "order_query",
+      "input": "订单 ORD-001 什么时候发货的？",
+      "expected_output_contains": ["1月2日", "发货"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC028",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "我要换货，尺码不合适",
+      "expected_output_contains": ["换货", "流程"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC029",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "顺丰快递一般几天到？",
+      "expected_output_contains": ["1-3天"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": [],
+      "difficulty": "easy",
+      "notes": "知识库问答"
+    },
+    {
+      "id": "TC030",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "包装破损，商品有划痕",
+      "expected_output_contains": ["抱歉", "照片"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["create_ticket"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC031",
+      "category": "general",
+      "intent": "chitchat",
+      "input": "谢谢",
+      "expected_output_contains": ["不客气", "帮助"],
+      "expected_intent": "chitchat",
+      "expected_tool_calls": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC032",
+      "category": "order",
+      "intent": "order_query",
+      "input": "我想取消订单",
+      "expected_output_contains": ["订单号"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "用户未提供订单号，应该追问"
+    },
+    {
+      "id": "TC033",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "退款会退到哪里？",
+      "expected_output_contains": ["原路返回", "支付账户"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": [],
+      "difficulty": "easy",
+      "notes": "知识库问答"
+    },
+    {
+      "id": "TC034",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "快递被退回去了怎么办？",
+      "expected_output_contains": ["联系", "快递公司"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": ["track_logistics"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "TC035",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "我要举报你们虚假宣传！",
+      "expected_output_contains": ["抱歉", "记录"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["create_ticket"],
+      "difficulty": "hard",
+      "notes": "严重投诉，应该升级处理"
+    },
+    {
+      "id": "TC036",
+      "category": "general",
+      "intent": "other",
+      "input": "你们支持货到付款吗？",
+      "expected_output_contains": ["支付方式"],
+      "expected_intent": "other",
+      "expected_tool_calls": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC037",
+      "category": "order",
+      "intent": "order_query",
+      "input": "订单 ORD-001 的商品明细",
+      "expected_output_contains": ["智能手机", "2999"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC038",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "已签收3天了还能退吗？",
+      "expected_output_contains": ["7天", "可以"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "知识库问答"
+    },
+    {
+      "id": "TC039",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "YT9876543210 这个快递到哪了？",
+      "expected_output_contains": ["已签收"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": ["track_logistics"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC040",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "客服电话一直打不通！",
+      "expected_output_contains": ["抱歉", "在线客服"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC041",
+      "category": "general",
+      "intent": "greeting",
+      "input": "你好，请问有人在吗？",
+      "expected_output_contains": ["在", "帮助"],
+      "expected_intent": "greeting",
+      "expected_tool_calls": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC042",
+      "category": "order",
+      "intent": "order_query",
+      "input": "帮我查一下我的订单有没有发货",
+      "expected_output_contains": ["订单号"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "用户未提供订单号，应该追问"
+    },
+    {
+      "id": "TC043",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "订单 ORD-001 取消后钱什么时候退回来？",
+      "expected_output_contains": ["退款", "3-5个工作日"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": ["query_order"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC044",
+      "category": "logistics",
+      "intent": "logistics_query",
+      "input": "快递显示派件中，什么时候能送到？",
+      "expected_output_contains": ["今天", "送达"],
+      "expected_intent": "logistics_query",
+      "expected_tool_calls": ["track_logistics"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC045",
+      "category": "complaint",
+      "intent": "complaint",
+      "input": "少发了一件商品！",
+      "expected_output_contains": ["抱歉", "核实"],
+      "expected_intent": "complaint",
+      "expected_tool_calls": ["query_order", "create_ticket"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "TC046",
+      "category": "general",
+      "intent": "chitchat",
+      "input": "你是机器人还是真人？",
+      "expected_output_contains": ["AI", "客服"],
+      "expected_intent": "chitchat",
+      "expected_tool_calls": [],
+      "difficulty": "easy"
+    },
+    {
+      "id": "TC047",
+      "category": "human_transfer",
+      "intent": "human_transfer",
+      "input": "我打了好几次电话都没人接，只能找在线客服了",
+      "expected_output_contains": ["转接", "人工"],
+      "expected_intent": "human_transfer",
+      "expected_tool_calls": ["transfer_to_human"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC048",
+      "category": "return",
+      "intent": "return_goods",
+      "input": "食品可以退货吗？",
+      "expected_output_contains": ["食品", "特殊"],
+      "expected_intent": "return_goods",
+      "expected_tool_calls": [],
+      "difficulty": "medium",
+      "notes": "特殊商品退货政策"
+    },
+    {
+      "id": "TC049",
+      "category": "order",
+      "intent": "order_query",
+      "input": "我的订单支付失败了怎么办？",
+      "expected_output_contains": ["重新", "支付"],
+      "expected_intent": "order_query",
+      "expected_tool_calls": [],
+      "difficulty": "medium"
+    },
+    {
+      "id": "TC050",
+      "category": "general",
+      "intent": "other",
+      "input": "你们有优惠券吗？",
+      "expected_output_contains": ["活动", "优惠"],
+      "expected_intent": "other",
+      "expected_tool_calls": [],
+      "difficulty": "medium"
+    }
+  ]
+}

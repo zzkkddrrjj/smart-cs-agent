@@ -1,0 +1,110 @@
+# Dify 工具定义 - 物流相关
+
+tools:
+  # 查询物流
+  - name: "track_logistics"
+    description: "查询物流信息，包括当前位置、预计到达时间、物流轨迹"
+    provider: "custom"
+    endpoint: "http://logistics-service:8002/api/v1/logistics/track/{tracking_number}"
+    method: "GET"
+    parameters:
+      - name: "tracking_number"
+        type: "string"
+        description: "快递单号"
+        required: true
+        location: "path"
+    response:
+      type: "object"
+      properties:
+        tracking_number:
+          type: "string"
+          description: "快递单号"
+        carrier:
+          type: "string"
+          description: "快递公司"
+        status:
+          type: "string"
+          description: "物流状态（pending/in_transit/delivered/exception）"
+        estimated_delivery:
+          type: "string"
+          description: "预计到达时间"
+        current_location:
+          type: "string"
+          description: "当前位置"
+        tracks:
+          type: "array"
+          description: "物流轨迹列表"
+    error_codes:
+      - code: 30001
+        message: "快递单号不存在"
+
+  # 催件
+  - name: "urge_delivery"
+    description: "催促快递配送，当物流超时或用户急需时使用"
+    provider: "custom"
+    endpoint: "http://logistics-service:8002/api/v1/logistics/urge"
+    method: "POST"
+    parameters:
+      - name: "order_id"
+        type: "string"
+        description: "订单号"
+        required: true
+        location: "body"
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+        required: true
+        location: "body"
+      - name: "reason"
+        type: "string"
+        description: "催件原因"
+        required: false
+        location: "body"
+    response:
+      type: "object"
+      properties:
+        urge_id:
+          type: "string"
+          description: "催件单号"
+        status:
+          type: "string"
+          description: "处理状态"
+        estimated_response:
+          type: "string"
+          description: "预计响应时间"
+    error_codes:
+      - code: 30002
+        message: "订单不存在"
+
+  # 拦截包裹
+  - name: "intercept_package"
+    description: "拦截包裹，用于取消订单时拦截在途包裹"
+    provider: "custom"
+    endpoint: "http://logistics-service:8002/api/v1/logistics/intercept"
+    method: "POST"
+    parameters:
+      - name: "order_id"
+        type: "string"
+        description: "订单号"
+        required: true
+        location: "body"
+      - name: "reason"
+        type: "string"
+        description: "拦截原因"
+        required: true
+        location: "body"
+    response:
+      type: "object"
+      properties:
+        intercept_id:
+          type: "string"
+          description: "拦截单号"
+        status:
+          type: "string"
+          description: "处理状态"
+        message:
+          type: "string"
+          description: "处理说明"
+    error_codes:
+      - code: 30003
+        message: "包裹无法拦截（已签收或已退货）"

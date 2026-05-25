@@ -1,0 +1,212 @@
+# Dify 工具定义 - 工单相关
+
+tools:
+  # 创建工单
+  - name: "create_ticket"
+    description: "创建客服工单，用于投诉、建议、复杂问题处理"
+    provider: "custom"
+    endpoint: "http://ticket-service:8003/api/v1/tickets"
+    method: "POST"
+    parameters:
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+        required: true
+        location: "body"
+      - name: "session_id"
+        type: "string"
+        description: "会话ID"
+        required: false
+        location: "body"
+      - name: "category"
+        type: "string"
+        description: "工单分类"
+        required: true
+        location: "body"
+        enum:
+          - "complaint"
+          - "suggestion"
+          - "technical"
+          - "other"
+      - name: "priority"
+        type: "string"
+        description: "优先级"
+        required: false
+        location: "body"
+        default: "medium"
+        enum:
+          - "low"
+          - "medium"
+          - "high"
+          - "urgent"
+      - name: "description"
+        type: "string"
+        description: "问题描述"
+        required: true
+        location: "body"
+      - name: "attachments"
+        type: "array"
+        description: "附件URL列表"
+        required: false
+        location: "body"
+      - name: "metadata"
+        type: "object"
+        description: "额外元数据（如订单号、商品ID）"
+        required: false
+        location: "body"
+    response:
+      type: "object"
+      properties:
+        ticket_id:
+          type: "string"
+          description: "工单号"
+        status:
+          type: "string"
+          description: "工单状态"
+        created_at:
+          type: "string"
+          description: "创建时间"
+        estimated_response:
+          type: "string"
+          description: "预计响应时间"
+    error_codes:
+      - code: 40001
+        message: "工单创建失败"
+
+  # 查询工单
+  - name: "get_ticket"
+    description: "查询工单详情"
+    provider: "custom"
+    endpoint: "http://ticket-service:8003/api/v1/tickets/{ticket_id}"
+    method: "GET"
+    parameters:
+      - name: "ticket_id"
+        type: "string"
+        description: "工单号"
+        required: true
+        location: "path"
+    response:
+      type: "object"
+      properties:
+        ticket_id:
+          type: "string"
+        user_id:
+          type: "string"
+        category:
+          type: "string"
+        priority:
+          type: "string"
+        status:
+          type: "string"
+        description:
+          type: "string"
+        resolution:
+          type: "string"
+        assigned_to:
+          type: "string"
+        created_at:
+          type: "string"
+        updated_at:
+          type: "string"
+        resolved_at:
+          type: "string"
+    error_codes:
+      - code: 40002
+        message: "工单不存在"
+
+  # 升级工单
+  - name: "escalate_ticket"
+    description: "升级工单优先级，用于紧急情况或用户强烈不满时"
+    provider: "custom"
+    endpoint: "http://ticket-service:8003/api/v1/tickets/{ticket_id}/escalate"
+    method: "POST"
+    parameters:
+      - name: "ticket_id"
+        type: "string"
+        description: "工单号"
+        required: true
+        location: "path"
+      - name: "reason"
+        type: "string"
+        description: "升级原因"
+        required: true
+        location: "query"
+    response:
+      type: "object"
+      properties:
+        ticket_id:
+          type: "string"
+        priority:
+          type: "string"
+        message:
+          type: "string"
+    error_codes:
+      - code: 40002
+        message: "工单不存在"
+
+  # 查询用户工单列表
+  - name: "list_user_tickets"
+    description: "查询用户的工单列表"
+    provider: "custom"
+    endpoint: "http://ticket-service:8003/api/v1/tickets"
+    method: "GET"
+    parameters:
+      - name: "user_id"
+        type: "string"
+        description: "用户ID"
+        required: true
+        location: "query"
+      - name: "status"
+        type: "string"
+        description: "工单状态过滤"
+        required: false
+        location: "query"
+      - name: "category"
+        type: "string"
+        description: "工单分类过滤"
+        required: false
+        location: "query"
+    response:
+      type: "object"
+      properties:
+        total:
+          type: "integer"
+        tickets:
+          type: "array"
+
+  # 转人工
+  - name: "transfer_to_human"
+    description: "转接人工客服，当用户主动要求或Agent无法解决时使用"
+    provider: "custom"
+    endpoint: "http://gateway:8000/api/v1/gateway/transfer"
+    method: "POST"
+    parameters:
+      - name: "session_id"
+        type: "string"
+        description: "会话ID"
+        required: true
+        location: "body"
+      - name: "reason"
+        type: "string"
+        description: "转人工原因"
+        required: true
+        location: "body"
+      - name: "context"
+        type: "object"
+        description: "上下文信息（对话历史、问题摘要）"
+        required: false
+        location: "body"
+    response:
+      type: "object"
+      properties:
+        transfer_id:
+          type: "string"
+        status:
+          type: "string"
+        queue_position:
+          type: "integer"
+        estimated_wait_time:
+          type: "string"
+    error_codes:
+      - code: 10005
+        message: "转人工失败，当前无可用客服"
